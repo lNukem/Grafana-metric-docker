@@ -1,0 +1,100 @@
+services:
+  nginx_service: #Nginx
+    image: nginx:stable
+    container_name: nginx_service
+    restart: unless-stopped
+    hostname: nginx
+    ports:
+      - 80:80
+      - 443:443
+    networks:
+      - metric_network
+    volumes:
+      - ./nginx_conf/:/etc/nginx/conf.d/:ro
+      - ./certbot/conf/:/etc/nginx/ssl/:ro
+    environment:
+      TZ: "Europe/Moscow"
+
+  certbot_service:
+    image: certbot/certbot:latest
+    container_name: certbot_service
+    restart: "no"
+    hostname: certbot
+    volumes:
+      - ./certbot/www/:/var/www/certbot/:rw
+      - ./certbot/conf/:/etc/letsencrypt/:rw
+    environment:
+      TZ: "Europe/Moscow"
+    networks:
+      - metric_network
+    
+  node_exporter_service: #Node exporter
+    image: prom/node-exporter
+    container_name: node_exporter_service
+    restart: unless-stopped
+    hostname: node_exp
+    networks:
+      - metric_network
+    environment:
+      TZ: "Europe/Moscow"
+
+  mariadb_exporter_service:
+    image: prom/mysqld-exporter
+    container_name: mariadb_exporter_service
+    restart: unless-stopped
+    hostname: db_exp
+    networks:
+      - metric_network
+    environment:
+      TZ: "Europe/Moscow"
+    command:
+      - "--mysqld.username=root:example12"
+      - "--mysqld.address=mariadb_service:3306"
+    depends_on:
+      - mariadb_service
+  
+  mariadb_service:
+    image: mariadb:latest
+    container_name: mariadb_service
+    restart: unless-stopped
+    hostname: mariadb
+    networks:
+      - metric_network
+    volumes:
+      - ./mariadb_db:/var/lib/mysql:Z
+    environment:
+      MARIADB_ROOT_PASSWORD: example12
+      TZ: "Europe/Moscow"
+    
+  prometheus_service:
+    image: prom/prometheus
+    container_name: prometheus_service
+    restart: unless-stopped
+    hostname: prometheus
+    networks:
+      - metric_network
+    volumes:
+      - ./prometheus_conf:/etc/prometheus:ro
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+    environment:
+      TZ: "Europe/Moscow"
+  
+  grafana_service:
+    image: grafana/grafana
+    container_name: grafana_service
+    restart: unless-stopped
+    hostname: grafana
+    networks:
+      - metric_network
+    environment:
+      GF_SECURITY_ADMIN_PASSWORD: admin12
+      GF_SECURITY_ADMIN_USER: admin12
+      TZ: "Europe/Moscow"
+    volumes:
+      - ./grafana_dashborads:/etc/grafana/provisioning/dashboards/ #Dashboard autostart yml
+      - ./grafana_datasources:/etc/grafana/provisioning/datasources/ #Datasource autostart yml
+    depends_on:
+      - prometheus_service
+networks:
+  metric_network:
