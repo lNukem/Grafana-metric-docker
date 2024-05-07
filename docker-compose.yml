@@ -33,6 +33,11 @@ services:
     container_name: node_exporter_service
     restart: unless-stopped
     hostname: node_exp
+    volumes:
+      - /:/rootfs:ro
+    command:
+      - '--path.rootfs=/rootfs'
+      - '--collector.filesystem.mount-points-exclude=^/(dev|host|etc)($$|/)'
     networks:
       - metric_network
     environment:
